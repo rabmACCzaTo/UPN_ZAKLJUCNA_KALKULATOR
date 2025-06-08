@@ -1,0 +1,145 @@
+#include <Keypad.h>
+#include <LiquidCrystal.h>
+ 
+// LCD: RS, E, D4, D5, D6, D7
+LiquidCrystal lcd(13, 12, A0, A1, A2, A3);
+ 
+// Tipkovnica 4x3
+const byte ROWS = 4;
+const byte COLS = 3;
+char keys[ROWS][COLS] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
+byte rowPins[ROWS] = {9, 8, 7, 6};   // vrstice
+byte colPins[COLS] = {5, 4, 3};      // stolpci
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+ 
+// Push button za menjavo operatorja
+const int operatorButtonPin = 2;
+int lastButtonState = HIGH;
+int buttonState;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
+ 
+bool operatorButtonPressed = false; // Da se izognemo ponavljanju
+ 
+// Spremenljivke za kalkulator
+String input = "";
+float num1 = 0, num2 = 0;
+char operators[] = {'+', '-', '*', '/'};
+int operatorIndex = 0;
+char oper = operators[operatorIndex];
+bool firstNumberEntered = false;
+ 
+void setup() {
+  pinMode(operatorButtonPin, INPUT_PULLUP);
+  lcd.begin(16, 2);
+  lcd.print("Kalkulator");
+  delay(1500);
+  lcd.clear();
+  updateDisplay();
+}
+ 
+void loop() {
+  handleOperatorButton();
+ 
+  char key = keypad.getKey();
+ 
+  if (key) {
+    if (key >= '0' && key <= '9') {
+      input += key;
+      updateDisplay();
+    } else if (key == '#') {  // Izračun
+      if (input.length() > 0 && firstNumberEntered) {
+        num2 = input.toFloat();
+        float result = 0;
+        bool error = false;
+ 
+        switch (oper) {
+          case '+': result = num1 + num2; break;
+          case '-': result = num1 - num2; break;
+          case '*': result = num1 * num2; break;
+          case '/':
+            if (num2 != 0) result = num1 / num2;
+            else error = true;
+            break;
+        }
+ 
+        lcd.clear();
+        if (error) {
+          lcd.print("Napaka: / 0");
+        } else {
+          lcd.print("Rezultat:");
+          lcd.setCursor(0, 1);
+          lcd.print(result);
+        }
+ 
+        delay(3000);
+        resetCalculator();
+        updateDisplay();
+      }
+    } else if (key == '*') {  // Preklic
+      resetCalculator();
+      updateDisplay();
+    }
+  }
+ 
+  // Če še ni bil vnesen prvi operand in je input na voljo
+  if (input.length() > 0 && !firstNumberEntered) {
+    num1 = input.toFloat();
+    firstNumberEntered = true;
+    input = "";
+    updateDisplay();
+  }
+}
+ 
+void handleOperatorButton() {
+  int reading = digitalRead(operatorButtonPin);
+ 
+  if (reading == LOW && lastButtonState == HIGH && !operatorButtonPressed) {
+    // Ob robu pritiska gumb enkrat spremeni operator
+    operatorIndex = (operatorIndex + 1) % 4;
+    oper = operators[operatorIndex];
+    operatorButtonPressed = true;
+    updateDisplay();
+  }
+  else if (reading == HIGH) {
+    operatorButtonPressed = false;
+  }
+ 
+  lastButtonState = reading;
+}
+ 
+void updateDisplay() {
+  lcd.clear();
+ 
+  if (!firstNumberEntered) {
+    // Prikazujemo samo vnos prvega števila
+    lcd.setCursor(0, 0);
+    lcd.print("Vnos 1:");
+    lcd.setCursor(0, 1);
+    lcd.print(input);
+  } else {
+    // Prvi operand + operator + trenutno vnesen drugi operand
+    lcd.setCursor(0, 0);
+    lcd.print(num1);
+    lcd.print(" ");
+    lcd.print(oper);
+    lcd.print(" ");
+ 
+    lcd.setCursor(0, 1);
+    lcd.print(input);
+  }
+}
+ 
+void resetCalculator() {
+  input = "";
+  num1 = 0;
+  num2 = 0;
+  firstNumberEntered = false;
+  operatorIndex = 0;
+  oper = operators[operatorIndex];
+}

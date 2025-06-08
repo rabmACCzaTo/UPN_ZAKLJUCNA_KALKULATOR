@@ -34,6 +34,8 @@ SLIKA VEZAVE:
 SLIKA SHEME:
 
 
+![image](https://github.com/user-attachments/assets/579ebc22-a41d-47fc-99d5-f5adc51a948d)
+
 
 VIDEO:
 
